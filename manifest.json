@@ -9,6 +9,12 @@
         "48": "icons/48.png",
         "16": "icons/16.png"
     },
+    "applications": {
+        "gecko": {
+            "id": "Surfingkeys@example.com",
+            "strict_min_version": "57.0"
+        }
+    },
     "commands": {
         "restartext": {
             "description": "Restart this extenstion."
@@ -36,7 +42,6 @@
     },
     "author": "brook hong",
     "permissions": [
-        "tts",
         "webRequest",
         "proxy",
         "<all_urls>",
@@ -47,13 +52,13 @@
         "sessions",
         "downloads",
         "topSites",
-        "downloads.shelf",
+        "downloads.open",
         "clipboardRead",
         "clipboardWrite"
     ],
     "background": {
-        "persistant": false,
         "scripts": [
+            "libs/browser-polyfill.min.js",
             "background.js"
         ]
     },
@@ -61,9 +66,10 @@
         "matches": ["<all_urls>"],
         "match_about_blank": true,
         "js": [
-            // build:common_content
+            "libs/browser-polyfill.min.js",
             "libs/trie.js",
             "libs/jquery.js",
+            "libs/webcomponents-lite.js",
             "content_scripts/utils.js",
             "content_scripts/debug_utils.js",
             "content_scripts/runtime.js",
@@ -71,7 +77,6 @@
             "content_scripts/insert.js",
             "content_scripts/visual.js",
             "content_scripts/hints.js",
-            // endbuild
             "content_scripts/front.js",
             "content_scripts/content_scripts.js"
         ],
@@ -96,6 +101,8 @@
         "pages/shadow.css",
         "pages/default.css"
     ],
-    "content_security_policy": "script-src 'unsafe-eval' 'sha256-nWgGskPWTedp2TpUOZNWBmUL17nlwxaRUKiNdVES5rE=' https://www.google-analytics.com; object-src 'self';",
-    "options_page": "pages/options.html"
+    "content_security_policy": "script-src 'self' 'unsafe-eval' 'sha256-nWgGskPWTedp2TpUOZNWBmUL17nlwxaRUKiNdVES5rE=' https://www.google-analytics.com; object-src 'self';",
+    "options_ui": {
+        "page": "pages/options.html"
+    }
 }

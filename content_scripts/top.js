@@ -3,11 +3,11 @@ var frontendFrame = (function() {
     var uiHost = document.createElement("div");
     uiHost.style.display = "block";
     uiHost.style.opacity = 1;
-    var frontEndURL = chrome.runtime.getURL('pages/frontend.html');
+    var frontEndURL = browser.runtime.getURL('pages/frontend.html');
     var ifr = $('<iframe allowtransparency="true" frameborder="0" scrolling="no" class="sk_ui" src="{0}" />'.format(frontEndURL));
-    uiHost.createShadowRoot();
+    uiHost.attachShadow({ mode: "open" });
     var sk_style = document.createElement("style");
-    sk_style.innerHTML = '@import url("{0}");'.format(chrome.runtime.getURL("pages/shadow.css"));
+    sk_style.innerHTML = '@import url("{0}");'.format(browser.runtime.getURL("pages/shadow.css"));
     uiHost.shadowRoot.appendChild(sk_style);
     ifr.appendTo(uiHost.shadowRoot);
 

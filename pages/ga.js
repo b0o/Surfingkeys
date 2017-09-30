@@ -1,4 +1,4 @@
-if (chrome.runtime.id === "gfbliohnnapiefjpjlpjnehglfpaknnc") {
+if (browser.runtime.id === "gfbliohnnapiefjpjlpjnehglfpaknnc") {
     var _gaq = _gaq || [];
     _gaq.push(['_setAccount', 'UA-64048030-1']);
     _gaq.push(['_trackPageview']);

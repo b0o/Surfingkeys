@@ -1,12 +1,12 @@
 document.addEventListener("DOMNodeInsertedIntoDocument", function(evt) {
     var elm = evt.srcElement;
     if (elm.tagName === "EMBED" && elm.type === "application/pdf") {
-        chrome.storage.local.get("noPdfViewer", function(resp) {
+        browser.storage.local.get("noPdfViewer", function(resp) {
             if (!resp.noPdfViewer) {
                 setTimeout(function() {
-                    // stop before redirect to prevent chrome crash
+                    // stop before redirect to prevent browser crash
                     window.stop();
-                    window.location.replace(chrome.extension.getURL("/pages/pdf_viewer.html") + "?r=" + elm.src);
+                    window.location.replace(browser.extension.getURL("/pages/pdf_viewer.html") + "?r=" + elm.src);
                 }, 0);
             }
         });
@@ -60,7 +60,7 @@ function RUNTIME(action, args) {
         RUNTIME.repeats = 1;
     }
     try {
-        chrome.runtime.sendMessage(args);
+        browser.runtime.sendMessage(args);
     } catch (e) {
         Front.showPopup('[runtime exception] ' + e);
     }
@@ -618,7 +618,7 @@ runtime.on('settingsUpdated', function(response) {
 
 function _init(onInit) {
     httpRequest({
-        url: chrome.extension.getURL('/pages/default.js'),
+        url: browser.extension.getURL('/pages/default.js'),
     }, function(res) {
 
         runScript(res.text);

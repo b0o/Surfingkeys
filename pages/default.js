@@ -300,13 +300,13 @@ mapkey('O', '#1Open detected links from text', function() {
 });
 mapkey(';s', 'Toggle PDF viewer from SurfingKeys', function() {
     var pdfUrl = window.location.href;
-    if (pdfUrl.indexOf(chrome.extension.getURL("/pages/pdf_viewer.html")) === 0) {
+    if (pdfUrl.indexOf(browser.extension.getURL("/pages/pdf_viewer.html")) === 0) {
         pdfUrl = window.location.search.substr(3);
-        chrome.storage.local.set({"noPdfViewer": 1}, function() {
+        browser.storage.local.set({"noPdfViewer": 1}, function() {
             window.location.replace(pdfUrl);
         });
     } else {
-        chrome.storage.local.remove("noPdfViewer", function() {
+        browser.storage.local.remove("noPdfViewer", function() {
             window.location.replace(pdfUrl);
         });
     }

@@ -2,7 +2,7 @@ runtime.command({
     action: 'getTabErrors'
 }, function(response) {
     if (!response.tabError || response.tabError.length === 0) {
-        window.location.href = chrome.extension.getURL("pages/options.html");
+        window.location.href = browser.extension.getURL("pages/options.html");
     } else {
         var tabError = response.tabError[0];
         $('#main-message .error-code').html(tabError.error);

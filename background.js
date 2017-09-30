@@ -179,7 +179,7 @@ var ChromeService = (function() {
 
     function createBookmark(page, onCreated) {
         if (page.path.length) {
-            chrome.bookmarks.create({
+            browser.bookmarks.create({
                 'parentId': page.folder,
                 'title': page.path.shift()
             }, function(newFolder) {
@@ -187,7 +187,7 @@ var ChromeService = (function() {
                 createBookmark(page, onCreated);
             });
         } else {
-            chrome.bookmarks.create({
+            browser.bookmarks.create({
                 'parentId': page.folder,
                 'title': page.title,
                 'url': page.url
@@ -246,23 +246,23 @@ var ChromeService = (function() {
 
     function loadRawSettings(keys, cb, defaultSet) {
         var rawSet = defaultSet || {};
-        chrome.storage.local.get(null, function(localSet) {
+        browser.storage.local.get(null, function(localSet) {
             var localSavedAt = localSet.savedAt || 0;
-            chrome.storage.sync.get(null, function(syncSet) {
+            browser.storage.sync.get(null).then(function(syncSet) {
                 var syncSavedAt = syncSet.savedAt || 0;
                 if (localSavedAt > syncSavedAt) {
                     extendObject(rawSet, localSet);
-                    _save(chrome.storage.sync, localSet, function() {
+                    _save(browser.storage.sync, localSet, function() {
                         var subset = getSubSettings(rawSet, keys);
-                        if (chrome.runtime.lastError) {
-                            subset.error = "Settings sync may not work thoroughly because of: " + chrome.runtime.lastError.message;
+                        if (browser.runtime.lastError) {
+                            subset.error = "Settings sync may not work thoroughly because of: " + browser.runtime.lastError.message;
                         }
                         cb(subset);
                     });
                 } else if (localSavedAt < syncSavedAt) {
                     extendObject(rawSet, syncSet);
                     cb(getSubSettings(rawSet, keys));
-                    _save(chrome.storage.local, syncSet);
+                    _save(browser.storage.local, syncSet);
                 } else {
                     extendObject(rawSet, localSet);
                     cb(getSubSettings(rawSet, keys));
@@ -309,7 +309,7 @@ var ChromeService = (function() {
 
     function _applyProxySettings(proxyConf) {
         if (!proxyConf.proxyMode || proxyConf.proxyMode === 'clear') {
-            chrome.proxy.settings.clear({scope: 'regular'});
+            browser.proxy.settings.clear({scope: 'regular'});
         } else {
             var autoproxy_pattern = proxyConf.autoproxy_hosts.filter(function(a) {
                 return a.indexOf('*') !== -1;
@@ -343,14 +343,14 @@ var ChromeService = (function() {
                     }`
                 }
             };
-            chrome.proxy.settings.set( {value: config, scope: 'regular'}, function() {
+            browser.proxy.settings.set( {value: config, scope: 'regular'}, function() {
             });
         }
     }
 
     loadSettings(null, _applyProxySettings);
 
-    chrome.webRequest.onErrorOccurred.addListener(function(details) {
+    browser.webRequest.onErrorOccurred.addListener(function(details) {
         var tabId = details.tabId;
         if (tabId !== -1 && (conf.interceptedErrors.indexOf("*") !== -1 || conf.interceptedErrors.indexOf(details.error) !== -1)) {
             if (!tabErrors.hasOwnProperty(tabId)) {
@@ -359,8 +359,8 @@ var ChromeService = (function() {
             if (details.type === "main_frame") {
                 tabErrors[tabId] = [];
                 if (details.error !== "net::ERR_ABORTED") {
-                    chrome.tabs.update(tabId, {
-                        url: chrome.extension.getURL("pages/error.html")
+                    browser.tabs.update(tabId, {
+                        url: browser.runtime.getURL("pages/error.html")
                     });
                 }
             }
@@ -370,7 +370,7 @@ var ChromeService = (function() {
         urls: ["<all_urls>"]
     });
 
-    chrome.extension.onConnect.addListener(function(port) {
+    browser.runtime.onConnect.addListener(function(port) {
         var sender = port.sender;
         activePorts.push(port);
         port.onMessage.addListener(function(message, port) {
@@ -406,32 +406,32 @@ var ChromeService = (function() {
             return e !== tabId;
         });
         if (_queueURLs.length) {
-            chrome.tabs.create({
+            browser.tabs.create({
                 active: false,
                 url: _queueURLs.shift()
             });
         }
     }
-    chrome.tabs.onRemoved.addListener(removeTab);
+    browser.tabs.onRemoved.addListener(removeTab);
     function _setScrollPos_bg(tabId) {
         if (tabMessages.hasOwnProperty(tabId)) {
             var message = tabMessages[tabId];
-            chrome.tabs.executeScript(tabId, {
+            browser.tabs.executeScript(tabId, {
                 code: "_setScrollPos(" + message.scrollLeft + ", " + message.scrollTop + ")"
             });
             delete tabMessages[tabId];
         }
     }
-    chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
+    browser.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
         if (changeInfo.status === "loading") {
             delete frames[tabId];
         }
         _setScrollPos_bg(tabId);
     });
-    chrome.tabs.onCreated.addListener(function(tabId, changeInfo, tab) {
+    browser.tabs.onCreated.addListener(function(tabId, changeInfo, tab) {
         _setScrollPos_bg(tabId);
     });
-    chrome.tabs.onActivated.addListener(function(activeInfo) {
+    browser.tabs.onActivated.addListener(function(activeInfo) {
         if (tabURLs.hasOwnProperty(activeInfo.tabId) && !historyTabAction && activeInfo.tabId != tabHistory[tabHistory.length - 1]) {
             if (tabHistory.length > 10) {
                 tabHistory.shift();
@@ -445,29 +445,29 @@ var ChromeService = (function() {
         tabActivated[activeInfo.tabId] = new Date().getTime();
         historyTabAction = false;
     });
-    chrome.commands.onCommand.addListener(function(command) {
+    browser.commands.onCommand.addListener(function(command) {
         switch (command) {
             case 'restartext':
-                chrome.runtime.reload();
+                browser.runtime.reload();
                 break;
             case 'previousTab':
             case 'nextTab':
-                chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+                browser.tabs.query({ active: true, currentWindow: true }, function(tabs) {
                     var tab = tabs[0];
                     var index = (command === 'previousTab') ? tab.index - 1 : tab.index + 1;
-                    chrome.tabs.query({ windowId: tab.windowId }, function(tabs) {
+                    browser.tabs.query({ windowId: tab.windowId }, function(tabs) {
                         index = ((index % tabs.length) + tabs.length) % tabs.length;
-                        chrome.tabs.update(tabs[index].id, { active: true });
+                        browser.tabs.update(tabs[index].id, { active: true });
                     });
                 });
                 break;
             case 'closeTab':
-                chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-                    chrome.tabs.remove(tabs[0].id);
+                browser.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+                    browser.tabs.remove(tabs[0].id);
                 });
                 break;
             case 'proxyThis':
-                chrome.tabs.query({
+                browser.tabs.query({
                     currentWindow: true,
                     active: true
                 }, function(resp) {
@@ -476,7 +476,7 @@ var ChromeService = (function() {
                         host: host,
                         operation: "toggle"
                     }, function() {
-                        chrome.tabs.reload(resp[0].id, {
+                        browser.tabs.reload(resp[0].id, {
                             bypassCache: true
                         });
                     });
@@ -486,7 +486,7 @@ var ChromeService = (function() {
                 break;
         }
     });
-    chrome.runtime.onMessage.addListener(handleMessage);
+    browser.runtime.onMessage.addListener(handleMessage);
     function _response(message, sendResponse, result) {
         result.action = message.action;
         result.id = message.id;
@@ -501,7 +501,7 @@ var ChromeService = (function() {
         tabErrors[sender.tab.id] = [];
     };
     self.isTabActive = function(message, sender, sendResponse) {
-        chrome.tabs.query({
+        browser.tabs.query({
             active: true
         }, function(resp) {
             var activeTabs = resp.map(function(t) {
@@ -523,14 +523,14 @@ var ChromeService = (function() {
 
     function _updateSettings(diffSettings, afterSet) {
         diffSettings.savedAt = new Date().getTime();
-        _save(chrome.storage.local, diffSettings, function() {
+        _save(browser.storage.local, diffSettings, function() {
             if (afterSet) {
                 afterSet();
             }
         });
-        _save(chrome.storage.sync, diffSettings, function() {
-            if (chrome.runtime.lastError) {
-                var error = chrome.runtime.lastError.message;
+        _save(browser.storage.sync, diffSettings, function() {
+            if (browser.runtime.lastError) {
+                var error = browser.runtime.lastError.message;
             }
         });
     }
@@ -562,7 +562,7 @@ var ChromeService = (function() {
     self.toggleBlacklist = function(message, sender, sendResponse) {
         loadSettings('blacklist', function(data) {
             var origin = ".*";
-            if (sender.tab && sender.tab.url.indexOf(chrome.extension.getURL("")) !== 0) {
+            if (sender.tab && sender.tab.url.indexOf(browser.runtime.getURL("")) !== 0) {
                 origin = new URL(sender.tab.url).origin;
             }
             if (data.blacklist.hasOwnProperty(origin)) {
@@ -601,8 +601,8 @@ var ChromeService = (function() {
     };
 
     self.resetSettings = function(message, sender, sendResponse) {
-        chrome.storage.local.clear();
-        chrome.storage.sync.clear();
+        browser.storage.local.clear();
+        browser.storage.sync.clear();
         loadSettings(null, function(data) {
             _applyProxySettings();
             _response(message, sendResponse, {
@@ -622,7 +622,7 @@ var ChromeService = (function() {
         return tabs;
     }
     self.getRecentlyClosed = function(message, sender, sendResponse) {
-        chrome.sessions.getRecentlyClosed({}, function(sessions) {
+        browser.sessions.getRecentlyClosed({}, function(sessions) {
             var tabs = [];
             for (var i = 0; i < sessions.length; i ++) {
                 var s = sessions[i];
@@ -639,7 +639,7 @@ var ChromeService = (function() {
         })
     };
     self.getTopSites = function(message, sender, sendResponse) {
-        chrome.topSites.get(function(urls) {
+        browser.topSites.get(function(urls) {
             urls = _filterByTitleOrUrl(urls, message.query);
             _response(message, sendResponse, {
                 urls: urls
@@ -647,7 +647,7 @@ var ChromeService = (function() {
         })
     };
     function _getHistory(cb, sortByMostUsed) {
-        chrome.history.search({
+        browser.history.search({
             startTime: 0,
             maxResults: 2147483647,
             text: ""
@@ -661,7 +661,7 @@ var ChromeService = (function() {
         });
     }
     self.getAllURLs = function(message, sender, sendResponse) {
-        chrome.bookmarks.getRecent(2147483647, function(tree) {
+        browser.bookmarks.getRecent(2147483647, function(tree) {
             var urls = tree;
             _getHistory(function(tree) {
                 urls = urls.concat(tree);
@@ -674,7 +674,7 @@ var ChromeService = (function() {
     self.getTabs = function(message, sender, sendResponse) {
         var tab = sender.tab;
         var queryInfo = message.queryInfo || {};
-        chrome.tabs.query(queryInfo, function(tabs) {
+        browser.tabs.query(queryInfo, function(tabs) {
             tabs = _filterByTitleOrUrl(tabs, message.query);
             if (message.query && message.query.length) {
                 tabs = tabs.filter(function(b) {
@@ -695,32 +695,32 @@ var ChromeService = (function() {
         });
     };
     self.togglePinTab = function(message, sender, sendResponse) {
-        chrome.tabs.getSelected(null, function(tab) {
-            return chrome.tabs.update(tab.id, {
+        browser.tabs.getSelected(null, function(tab) {
+            return browser.tabs.update(tab.id, {
                 pinned: !tab.pinned
             });
         });
     };
     self.focusTab = function(message, sender, sendResponse) {
         if (message.window_id !== undefined && sender.tab.windowId !== message.window_id) {
-            chrome.windows.update(message.window_id, {
+            browser.windows.update(message.window_id, {
                 focused: true
             }, function() {
-                chrome.tabs.update(message.tab_id, {
+                browser.tabs.update(message.tab_id, {
                     active: true
                 });
             });
         } else {
-            chrome.tabs.update(message.tab_id, {
+            browser.tabs.update(message.tab_id, {
                 active: true
             });
         }
     };
     self.focusTabByIndex = function(message, sender, sendResponse) {
         var queryInfo = message.queryInfo || {};
-        chrome.tabs.query(queryInfo, function(tabs) {
+        browser.tabs.query(queryInfo, function(tabs) {
             if (message.repeats > 0 && message.repeats <= tabs.length) {
-                chrome.tabs.update(tabs[message.repeats - 1].id, {
+                browser.tabs.update(tabs[message.repeats - 1].id, {
                     active: true
                 });
             }
@@ -740,7 +740,7 @@ var ChromeService = (function() {
                 }
             }
             var tab_id = tabHistory[tabHistoryIndex];
-            chrome.tabs.update(tab_id, {
+            browser.tabs.update(tab_id, {
                 active: true
             });
         }
@@ -762,7 +762,7 @@ var ChromeService = (function() {
         return base;
     }
     function _nextTab(tab, step) {
-        chrome.tabs.query({
+        browser.tabs.query({
             windowId: tab.windowId
         }, function(tabs) {
             if (tab.index == 0 && step == -1) {
@@ -771,7 +771,7 @@ var ChromeService = (function() {
                 step = 1 - tabs.length ;
             }
             var to = _fixTo(tab.index + step, tabs.length - 1);
-            chrome.tabs.update(tabs[to].id, {
+            browser.tabs.update(tabs[to].id, {
                 active: true
             });
         });
@@ -783,7 +783,7 @@ var ChromeService = (function() {
         _nextTab(sender.tab, -message.repeats);
     };
     function _roundRepeatTabs(tab, repeats, operation) {
-        chrome.tabs.query({
+        browser.tabs.query({
             windowId: tab.windowId
         }, function(tabs) {
             var tabIds = tabs.map(function(e) {
@@ -797,7 +797,7 @@ var ChromeService = (function() {
     self.reloadTab = function(message, sender, sendResponse) {
         _roundRepeatTabs(sender.tab, message.repeats, function(tabIds) {
             tabIds.forEach(function(tabId) {
-                chrome.tabs.reload(tabId, {
+                browser.tabs.reload(tabId, {
                     bypassCache: message.nocache
                 });
             });
@@ -805,7 +805,7 @@ var ChromeService = (function() {
     };
     self.closeTab = function(message, sender, sendResponse) {
         _roundRepeatTabs(sender.tab, message.repeats, function(tabIds) {
-            chrome.tabs.remove(tabIds, function() {
+            browser.tabs.remove(tabIds, function() {
                 if ( conf.focusAfterClosed === "left" ) {
                     _nextTab(sender.tab, -1);
                 }
@@ -814,9 +814,9 @@ var ChromeService = (function() {
     };
 
     function _closeTab(s, n) {
-        chrome.tabs.query({currentWindow: true}, function(tabs) {
+        browser.tabs.query({currentWindow: true}, function(tabs) {
             tabs = tabs.map(function(e) { return e.id; });
-            chrome.tabs.remove(tabs.slice(s.tab.index + (n < 0 ? n : 1),
+            browser.tabs.remove(tabs.slice(s.tab.index + (n < 0 ? n : 1),
                                           s.tab.index + (n < 0 ? 0 : 1 + n)));
         });
     };
@@ -825,24 +825,24 @@ var ChromeService = (function() {
     self.closeTabRight = function(message, sender, senderResponse) { _closeTab(sender, message.repeats); };
     self.closeTabsToLeft = function(message, sender, senderResponse) { _closeTab(sender, -sender.tab.index); };
     self.closeTabsToRight = function(message, sender, senderResponse) {
-        chrome.tabs.query({currentWindow: true},
+        browser.tabs.query({currentWindow: true},
                           function(tabs) { _closeTab(sender, tabs.length - sender.tab.index); });
     };
 
     self.muteTab = function(message, sender, sendResponse) {
         var tab = sender.tab;
-        chrome.tabs.update(tab.id, {
+        browser.tabs.update(tab.id, {
             muted: ! tab.mutedInfo.muted
         });
     };
     self.openLast = function(message, sender, sendResponse) {
-        chrome.sessions.restore();
+        browser.sessions.restore();
     };
     self.duplicateTab = function(message, sender, sendResponse) {
-        chrome.tabs.duplicate(sender.tab.id);
+        browser.tabs.duplicate(sender.tab.id);
     };
     self.newWindow = function(message, sender, sendResponse) {
-        chrome.tabs.query({}, function(tabs) {
+        browser.tabs.query({}, function(tabs) {
             var tabInWindow = {};
             tabs.forEach(function(t) {
                 tabInWindow[t.windowId] = tabInWindow[t.windowId] || [];
@@ -858,14 +858,14 @@ var ChromeService = (function() {
                         windowWithMostTab = w;
                     }
                 }
-                chrome.tabs.move(sender.tab.id, {windowId: parseInt(windowWithMostTab), index: -1});
+                browser.tabs.move(sender.tab.id, {windowId: parseInt(windowWithMostTab), index: -1});
             } else {
-                chrome.windows.create({tabId: sender.tab.id});
+                browser.windows.create({tabId: sender.tab.id});
             }
         });
     };
     self.getBookmarkFolders = function(message, sender, sendResponse) {
-        chrome.bookmarks.getTree(function(tree) {
+        browser.bookmarks.getTree(function(tree) {
             bookmarkFolders = [];
             getFolders(tree[0], "");
             _response(message, sendResponse, {
@@ -884,7 +884,7 @@ var ChromeService = (function() {
     };
     self.getBookmarks = function(message, sender, sendResponse) {
         if (message.parentId) {
-            chrome.bookmarks.getSubTree(message.parentId, function(tree) {
+            browser.bookmarks.getSubTree(message.parentId, function(tree) {
                 var bookmarks = tree[0].children;
                 if (message.query && message.query.length) {
                     bookmarks = bookmarks.filter(function(b) {
@@ -897,13 +897,13 @@ var ChromeService = (function() {
             });
         } else {
             if (message.query && message.query.length) {
-                chrome.bookmarks.search(message.query, function(tree) {
+                browser.bookmarks.search(message.query, function(tree) {
                     _response(message, sendResponse, {
                         bookmarks: tree
                     });
                 });
             } else {
-                chrome.bookmarks.getTree(function(tree) {
+                browser.bookmarks.getTree(function(tree) {
                     _response(message, sendResponse, {
                         bookmarks: tree[0].children
                     });
@@ -947,7 +947,7 @@ var ChromeService = (function() {
                         break;
                 }
             }
-            chrome.tabs.create({
+            browser.tabs.create({
                 url: url,
                 active: message.tab.active,
                 index: newTabPosition,
@@ -961,7 +961,7 @@ var ChromeService = (function() {
                 }
             });
         } else {
-            chrome.tabs.update({
+            browser.tabs.update({
                 url: url,
                 pinned: message.tab.pinned || sender.tab.pinned
             }, function(tab) {
@@ -1004,7 +1004,7 @@ var ChromeService = (function() {
         }
     };
     self.setSurfingkeysIcon = function(message, sender, sendResponse) {
-        chrome.browserAction.setIcon({
+        browser.browserAction.setIcon({
             path: (message.status ? 'icons/48-x.png' : 'icons/48.png'),
             tabId: (sender.tab ? sender.tab.id : undefined)
         });
@@ -1023,7 +1023,7 @@ var ChromeService = (function() {
             framesInTab.index ++;
             framesInTab.index = framesInTab.index % framesInTab.list.length;
 
-            chrome.tabs.sendMessage(tid, {
+            browser.tabs.sendMessage(tid, {
                 subject: "focusFrame",
                 target: 'content_runtime',
                 frameId: framesInTab.list[framesInTab.index]
@@ -1031,21 +1031,21 @@ var ChromeService = (function() {
         }
     };
     self.moveTab = function(message, sender, sendResponse) {
-        chrome.tabs.query({
+        browser.tabs.query({
             windowId: sender.tab.windowId
         }, function(tabs) {
             var to = _fixTo(sender.tab.index + message.step * message.repeats, tabs.length);
-            chrome.tabs.move(sender.tab.id, {
+            browser.tabs.move(sender.tab.id, {
                 index: to
             });
         });
     };
     function _quit() {
-        chrome.windows.getAll({
+        browser.windows.getAll({
             populate: false
         }, function(windows) {
             windows.forEach(function(w) {
-                chrome.windows.remove(w.id);
+                browser.windows.remove(w.id);
             });
         });
     }
@@ -1054,7 +1054,7 @@ var ChromeService = (function() {
     };
     self.createSession = function(message, sender, sendResponse) {
         loadSettings('sessions', function(data) {
-            chrome.tabs.query({}, function(tabs) {
+            browser.tabs.query({}, function(tabs) {
                 var tabGroup = {};
                 tabs.forEach(function(tab) {
                     if (tab && tab.index !== void 0) {
@@ -1085,7 +1085,7 @@ var ChromeService = (function() {
             if (data.sessions.hasOwnProperty(message.name)) {
                 var urls = data.sessions[message.name]['tabs'];
                 urls[0].forEach(function(url) {
-                    chrome.tabs.create({
+                    browser.tabs.create({
                         url: url,
                         active: false,
                         pinned: false
@@ -1093,9 +1093,9 @@ var ChromeService = (function() {
                 });
                 for (var i = 1; i < urls.length; i++) {
                     var a = urls[i];
-                    chrome.windows.create({}, function(win) {
+                    browser.windows.create({}, function(win) {
                         a.forEach(function(url) {
-                            chrome.tabs.create({
+                            browser.tabs.create({
                                 windowId: win.id,
                                 url: url,
                                 active: false,
@@ -1104,10 +1104,10 @@ var ChromeService = (function() {
                         });
                     });
                 }
-                chrome.tabs.query({
+                browser.tabs.query({
                     url: newTabUrl
                 }, function(tabs) {
-                    chrome.tabs.remove(tabs.map(function(t) {
+                    browser.tabs.remove(tabs.map(function(t) {
                         return t.id
                     }))
                 });
@@ -1123,17 +1123,17 @@ var ChromeService = (function() {
         });
     };
     self.closeDownloadsShelf = function(message, sender, sendResponse) {
-        chrome.downloads.erase({"urlRegex": ".*"});
+        browser.downloads.erase({"urlRegex": ".*"});
     };
     self.getDownloads = function(message, sender, sendResponse) {
-        chrome.downloads.search(message.query, function(items) {
+        browser.downloads.search(message.query, function(items) {
             _response(message, sendResponse, {
                 downloads: items
             });
         })
     };
     self.executeScript = function(message, sender, sendResponse) {
-        chrome.tabs.executeScript(sender.tab.id, {
+        browser.tabs.executeScript(sender.tab.id, {
             frameId: sender.frameId,
             code: message.code,
             file: message.file
@@ -1217,27 +1217,27 @@ var ChromeService = (function() {
         var tabId = sender.tab.id;
         var zoomFactor = message.zoomFactor * message.repeats;
         if (zoomFactor == 0) {
-            chrome.tabs.setZoom(tabId, 1);
+            browser.tabs.setZoom(tabId, 1);
         } else {
-            chrome.tabs.getZoom(tabId, function(zf) {
-                chrome.tabs.setZoom(tabId, zf + zoomFactor);
+            browser.tabs.getZoom(tabId, function(zf) {
+                browser.tabs.setZoom(tabId, zf + zoomFactor);
             });
         }
     };
     function _removeURL(uid, cb) {
         var type = uid[0], uid = uid.substr(1);
         if (type === 'B') {
-            chrome.bookmarks.remove(uid, cb);
+            browser.bookmarks.remove(uid, cb);
         } else if (type === 'H') {
-            chrome.history.deleteUrl({url: uid}, cb);
+            browser.history.deleteUrl({url: uid}, cb);
         } else if (type === 'T') {
             uid = uid.split(":").map(function(u) {
                 return parseInt(u);
             });
-            chrome.windows.update(uid[0], {
+            browser.windows.update(uid[0], {
                 focused: true
             }, function() {
-                chrome.tabs.remove(uid[1], cb);
+                browser.tabs.remove(uid[1], cb);
             });
         } else if (type === 'M') {
             loadSettings('marks', function(data) {
@@ -1269,13 +1269,13 @@ var ChromeService = (function() {
     };
     self.localData = function(message, sender, sendResponse) {
         if (message.data.constructor === Object) {
-            chrome.storage.local.set(message.data, function() {
+            browser.storage.local.set(message.data, function() {
                 _response(message, sendResponse, {
                     data: "Done"
                 });
             });
             // broadcast the change also, such as lastKeys
-            // we would set lastKeys in sync to avoid breaching chrome.storage.sync.MAX_WRITE_OPERATIONS_PER_MINUTE
+            // we would set lastKeys in sync to avoid breaching browser.storage.sync.MAX_WRITE_OPERATIONS_PER_MINUTE
             activePorts.forEach(function(port) {
                 port.postMessage({
                     action: 'settingsUpdated',
@@ -1284,7 +1284,7 @@ var ChromeService = (function() {
             });
         } else {
             // string or array of string keys
-            chrome.storage.local.get(message.data, function(data) {
+            browser.storage.local.get(message.data, function(data) {
                 _response(message, sendResponse, {
                     data: data
                 });
@@ -1292,7 +1292,7 @@ var ChromeService = (function() {
         }
     };
     self.captureVisibleTab = function(message, sender, sendResponse) {
-        chrome.tabs.captureVisibleTab(null, {format: "png"}, function(dataUrl) {
+        browser.tabs.captureVisibleTab(null, {format: "png"}, function(dataUrl) {
             _response(message, sendResponse, {
                 dataUrl: dataUrl
             });
@@ -1306,24 +1306,24 @@ var ChromeService = (function() {
                 height: img.height
             });
         };
-        chrome.tabs.captureVisibleTab(null, {format: "png"}, function(dataUrl) {
+        browser.tabs.captureVisibleTab(null, {format: "png"}, function(dataUrl) {
             img.src = dataUrl;
         });
     };
     self.deleteHistoryOlderThan = function(message, sender, sendResponse) {
         var days = message.days || 0, hours = message.hours || 0;
-        chrome.history.deleteRange({
+        browser.history.deleteRange({
             startTime: 0,
             endTime: new Date().getTime() - (days * 86400 + hours * 3600) * 1000
         }, function() {
         });
     };
     function removeBookmark(url, cb) {
-        chrome.bookmarks.search({
+        browser.bookmarks.search({
             url: url
         }, function(bookmarks) {
             bookmarks.forEach(function(b) {
-                chrome.bookmarks.remove(b.id);
+                browser.bookmarks.remove(b.id);
             });
             cb && cb();
         });
@@ -1332,7 +1332,7 @@ var ChromeService = (function() {
         removeBookmark(sender.tab.url);
     };
     self.getBookmark = function(message, sender, sendResponse) {
-        chrome.bookmarks.search({
+        browser.bookmarks.search({
             url: sender.tab.url
         }, function(bookmarks) {
             _response(message, sendResponse, {
@@ -1370,7 +1370,7 @@ var ChromeService = (function() {
     };
 
     self.getVoices = function(message, sender, sendResponse) {
-        chrome.tts.getVoices(function(voices) {
+        browser.tts.getVoices(function(voices) {
             _response(message, sendResponse, {
                 voices: voices
             });
@@ -1384,10 +1384,10 @@ var ChromeService = (function() {
                 ttsEvent: ttsEvent
             });
         };
-        chrome.tts.speak(message.content, options);
+        browser.tts.speak(message.content, options);
     };
     self.stopReading = function(message, sender, sendResponse) {
-        chrome.tts.stop();
+        browser.tts.stop();
     };
 
     return self;

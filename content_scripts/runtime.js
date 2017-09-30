@@ -42,11 +42,11 @@ var runtime = window.runtime || (function() {
         },
         runtime_handlers: {}
     }, actions = {};
-    if (!chrome.runtime.connect) {
+    if (!browser.runtime.connect) {
         return self;
     }
 
-    var _port = chrome.runtime.connect({
+    var _port = browser.runtime.connect({
         name: 'main'
     });
     _port.onDisconnect.addListener(function(evt) {
@@ -132,7 +132,7 @@ var runtime = window.runtime || (function() {
         });
     };
 
-    chrome.runtime.onMessage.addListener(function(msg, sender, response) {
+    browser.runtime.onMessage.addListener(function(msg, sender, response) {
         if (msg.target === 'content_runtime') {
             if (self.runtime_handlers[msg.subject]) {
                 self.runtime_handlers[msg.subject](msg, sender, response);

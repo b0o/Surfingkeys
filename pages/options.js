@@ -120,7 +120,7 @@ $('#showDefaultSettings').click(function() {
         $(mappingsEditor.container).css('width', '100%');
     } else {
         httpRequest({
-            url: chrome.extension.getURL('/pages/default.js'),
+            url: browser.extension.getURL('/pages/default.js'),
         }, function(res) {
             $(defaultMappingsEditor.container).css('display', 'inline-block');
             defaultMappingsEditor.setValue(res.text, -1);

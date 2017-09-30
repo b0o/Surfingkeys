@@ -105,7 +105,7 @@ var Mode = (function() {
                 sl = runtime.conf.showModeStatus ? cm.name :  "";
             }
             if (sl !== "" && window !== top) {
-                if (chrome.extension.getURL('').indexOf(window.location.origin) === 0) {
+                if (browser.extension.getURL('').indexOf(window.location.origin) === 0) {
                     if (!cm.frontendOnly) {
                         sl += "✩";
                     }
@@ -279,7 +279,7 @@ var Normal = (function(mode) {
     });
 
     self.toggleBlacklist = function() {
-        if (document.location.href.indexOf(chrome.extension.getURL("")) !== 0) {
+        if (document.location.href.indexOf(browser.extension.getURL("")) !== 0) {
             runtime.command({
                 action: 'toggleBlacklist',
                 blacklistPattern: (runtime.conf.blacklistPattern ? runtime.conf.blacklistPattern.toJSON() : "")

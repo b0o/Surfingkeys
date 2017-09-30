@@ -24,7 +24,9 @@ gulp.task('copy-pretty-default-js', ['copy-js-files'], function() {
 
 gulp.task('build_common_content_min', ['clean'], function() {
     return gulp.src([
+        "libs/browser-polyfill.min.js",
         "libs/trie.js",
+        "libs/webcomponents-lite.js",
         "libs/jquery.js",
         "content_scripts/utils.js",
         "content_scripts/runtime.js",

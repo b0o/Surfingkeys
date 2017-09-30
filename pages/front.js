@@ -199,7 +199,7 @@ var Front = (function(mode) {
                 return str;
             });
         } else {
-            fetch(chrome.extension.getURL("pages/l10n.json")).then(function(res) {
+            fetch(browser.extension.getURL("pages/l10n.json")).then(function(res) {
                 return res.json();
             }).then(function(l10n) {
                 if (typeof(l10n[lang]) === "object") {
